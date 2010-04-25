@@ -87,8 +87,8 @@
 
 (defun* macro-expand-commands-aux (pp-macro-name &key (pp t))
   (let ((sexp (thing-at-point 'sexp)))
-    (let ((ret (eval (first (read-from-string
-                             (format "(%s  %s)" pp-macro-name sexp))))))
+    (let ((ret (eval (car (read-from-string
+                           (format "(%s  %s)" pp-macro-name sexp))))))
       (let ((outbuf (get-buffer-create macro-expand-commands-output-buffer-name)))
         (with-current-buffer outbuf
           (erase-buffer)
