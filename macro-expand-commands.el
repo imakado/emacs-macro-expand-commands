@@ -78,6 +78,16 @@
                                     (lambda (buffer)
                                       (kill-buffer buffer)
                                       (ignore-errors (delete-window))))))))
+                 (const :tag "View Mode but inhibit read only"
+                        (lambda (outbuf)
+                          (with-current-buffer outbuf
+                            (let ((view-no-disable-on-exit t))
+                              (view-mode)
+                              (setq buffer-read-only nil)
+                              (setq view-exit-action
+                                    (lambda (buffer)
+                                      (kill-buffer buffer)
+                                      (ignore-errors (delete-window))))))))
                  (const :tag "Just View"
                         'identity)
                  function))
@@ -132,17 +142,18 @@
                            (format "(%s  %s)" pp-macro-name sexp))))))
       (let ((outbuf (get-buffer-create macro-expand-commands-output-buffer-name)))
         (with-current-buffer outbuf
-          (erase-buffer)
-          (emacs-lisp-mode)
-          (insert (format "%s" ret))
-          ;; remove newline at bob and eob
-          ;; replace newline to \\n (this makes fontify and indentation broken)
-          ;; beautify buffer
-          (when pp
-            (macro-expand-commands-pp-output-buffer (current-buffer)))
-          (funcall macro-expand-commands-output-function outbuf)
-          (funcall macro-expand-commands-setup-output-buffer-function
-                   outbuf))))))
+          (let ((inhibit-read-only t))
+            (erase-buffer)
+            (emacs-lisp-mode)
+            (insert (format "%s" ret))
+            ;; remove newline at bob and eob
+            ;; replace newline to \\n (this makes fontify and indentation broken)
+            ;; beautify buffer
+            (when pp
+              (macro-expand-commands-pp-output-buffer (current-buffer)))
+            (funcall macro-expand-commands-output-function outbuf)
+            (funcall macro-expand-commands-setup-output-buffer-function
+                     outbuf)))))))
 
 (defun macro-expand-commands-pp-output-buffer (buf)
   (with-current-buffer buf
