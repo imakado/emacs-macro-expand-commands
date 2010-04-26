@@ -25,24 +25,65 @@
 ;; this package maight load "cl.el" (when called `macro-expand-commands-cl-macroexpand')
 
 ;;; Commentary:
-
 ;; Call comannd at the beggining of sexp.
 
-;; sample config
+;; sample config:
 ;; (require 'macro-expand-commands)
 ;; (define-key emacs-lisp-mode-map (kbd "C-M-S-e") 'macro-expand-cl-sexp)
 ;; (define-key emacs-lisp-mode-map (kbd "M-E") 'macro-expand-sexp)
 ;; (define-key emacs-lisp-mode-map (kbd "C-M-S-b") 'macro-expand-byte-code)
+
+;; Thanks to kitokitoki for `view-mode' support patch. (on github)
 
 (eval-when-compile
   (require 'cl))
 (require 'rx)
 (require 'pp)
 
-(defvar macro-expand-commands-output-buffer-name "*MacroExpand output*")
-(defvar macro-expand-commands-output-function
+;;;; Customization
+(defgroup macro-expand-commands nil
+  "usefull commands for writting macro."
+  :group 'convenience
+  :prefix "macro-expand-commands-")
+(defcustom macro-expand-commands-output-function
   (lambda (output-buffer)
-    (pop-to-buffer output-buffer)))
+    (pop-to-buffer output-buffer))
+  "output function"
+  :type '(choice (const :tag "Pop To Buffer"
+                        (lambda (output-buffer)
+                          (pop-to-buffer output-buffer)))
+                 (const :tag "Switch To Buffer"
+                        (lambda (output-buffer)
+                          (switch-to-buffer output-buffer)))
+                 function)
+  :group 'macro-expand-commands)
+
+(defcustom macro-expand-commands-setup-output-buffer-function
+  (lambda (outbuf)
+    (with-current-buffer outbuf
+      (let ((view-no-disable-on-exit t))
+        (view-mode)
+        (setq view-exit-action
+              (lambda (buffer)
+                (kill-buffer buffer)
+                (ignore-errors (delete-window)))))))
+  "setup function"
+  :group 'macro-expand-commands
+  :type '(choice (const :tag "View Mode"
+                        (lambda (outbuf)
+                          (with-current-buffer outbuf
+                            (let ((view-no-disable-on-exit t))
+                              (view-mode)
+                              (setq view-exit-action
+                                    (lambda (buffer)
+                                      (kill-buffer buffer)
+                                      (ignore-errors (delete-window))))))))
+                 (const :tag "Just View"
+                        'identity)
+                 function))
+
+(defvar macro-expand-commands-output-buffer-name "*MacroExpand output*")
+
 
 (defvar macro-expand-commands-dont-newline-symbols
   '( let let* quote while fset list lambda memq member member* car cdr
@@ -99,7 +140,9 @@
           ;; beautify buffer
           (when pp
             (macro-expand-commands-pp-output-buffer (current-buffer)))
-          (funcall macro-expand-commands-output-function outbuf))))))
+          (funcall macro-expand-commands-output-function outbuf)
+          (funcall macro-expand-commands-setup-output-buffer-function
+                   outbuf))))))
 
 (defun macro-expand-commands-pp-output-buffer (buf)
   (with-current-buffer buf
